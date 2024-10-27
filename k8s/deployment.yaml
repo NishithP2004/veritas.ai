@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 11434
+        env:
+        - name: OLLAMA_NUM_PARALLEL
+          value: "4"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: veritas-ai
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: veritas-ai
+  template:
+    metadata:
+      labels:
+        app: veritas-ai
+    spec:
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command: ['sh', '-c', 'until nc -z kafka 9092; do echo "Waiting for Kafka..."; sleep 5; done']
+      containers:
+        - name: veritas-ai
+          image: nishithp/veritas-ai:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000

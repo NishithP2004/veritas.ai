@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: zookeeper
+  name: zookeeper
+spec:
+  ports:
+    - name: "2181"
+      port: 2181
+      targetPort: 2181
+  selector:
+    service: zookeeper
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: kafka
+  name: kafka
+spec:
+  clusterIP: None
+  selector:
+    service: kafka
+  ports:
+    - name: internal
+      port: 29092
+      targetPort: 29092
+    - name: external
+      port: 30092
+      targetPort: 9092
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  name: ollama
+  labels:
+    app: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - name: ollama-port
+      protocol: TCP
+      port: 11434
+      targetPort: 11434
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  name: veritas-ai
+  labels:
+    app: veritas-ai
+spec:
+  type: LoadBalancer
+  selector:
+    app: veritas-ai
+  ports:
+    - name: veritas-ai-port
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
