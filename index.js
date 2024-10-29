@@ -1,7 +1,9 @@
 import express from "express"
 import { createServer } from "node:http";
 import { Server } from "socket.io" 
-import { sendMessage } from "./kafka.js";
+import { sendMessage, initKafka } from "./kafka.js";
+
+initKafka().catch(console.error)
 
 const app = express();
 const PORT = process.env.PORT || 3000;

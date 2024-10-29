@@ -1,12 +1,22 @@
-import { Kafka } from "kafkajs";
-// import ip from "ip"
+import {
+    Kafka
+} from "kafkajs";
+import ip from "ip"
 import "dotenv/config"
-import { guessPrompt, generatePerturb, generatePerturbations, updateTask } from "./utils.js"
-import { randomBytes } from "node:crypto";
+import {
+    guessPrompt,
+    generatePerturb,
+    generatePerturbations,
+    updateTask
+} from "./utils.js"
+import {
+    randomBytes
+} from "node:crypto";
 
-// const HOST_IP = process.env.HOST_IP || ip.address()
+const HOST_IP = process.env.HOST_IP || ip.address()
 const kafka = new Kafka({
     clientId: "veritas.ai",
+    // brokers: [`${HOST_IP}:9092`]
     brokers: ["kafka:9092"]
 })
 
@@ -18,14 +28,15 @@ const consumer = kafka.consumer({
 const topics = ["reverse_engineer_prompt", "generate_perturbation", "fine_tune_llm", "classify_text"]
 
 async function sendMessage(message) {
-    const { topic, data } = message
+    const {
+        topic,
+        data
+    } = message
     const metadata = await producer.send({
         topic,
-        messages: [
-            {
-                value: JSON.stringify(data)
-            }
-        ]
+        messages: [{
+            value: JSON.stringify(data)
+        }]
     })
 
     return metadata
@@ -33,14 +44,6 @@ async function sendMessage(message) {
 
 const initKafka = async () => {
     await producer.connect()
-    /* await producer.send({
-        topic: "foo-bar",
-        messages: [
-            {
-                value: "Hello World"
-            }
-        ]
-    }) */
 
     await consumer.connect()
     await consumer.subscribe({
@@ -48,7 +51,11 @@ const initKafka = async () => {
     })
 
     await consumer.run({
-        eachMessage: async ({ topic, partition, message }) => {
+        eachMessage: async ({
+            topic,
+            partition,
+            message
+        }) => {
             const data = JSON.parse(message.value.toString())
             console.log({
                 topic,
@@ -57,26 +64,33 @@ const initKafka = async () => {
                 value: data
             })
 
-            switch(topic) {
-                case "reverse_engineer_prompt":
-                    const prompt = await guessPrompt(data.text)
-                    const hash = randomBytes(4).toString("hex")
+            if (topic === "reverse_engineer_prompt") {
+                console.log("Guessing Prompt")
+                const prompt = await guessPrompt(data.text)
+                const hash = randomBytes(4).toString("hex")
 
-                    // TODO: Associate Task with User ID
-                    await updateTask(hash, "Started")
-                    await generatePerturbations(prompt, hash)
-                    break;
-                case "generate_perturbation":
-                    const { parameters, task_id } = data;
-                    await generatePerturb(parameters, task_id);
-                    break;
-                case "fine_tune_llm":
-                    console.log("Fine Tuning !!!")
+                console.log("Creating Task")
+                await updateTask(hash, topic)
+
+                console.log("Generating Perturbations")
+                await generatePerturbations(prompt, hash)
+            } else if (topic === "generate_perturbation") {
+                const {
+                    parameters,
+                    task_id
+                } = data;
+                
+                console.log("Generating Perturb")
+                await updateTask(task_id, topic)
+                await generatePerturb(parameters, task_id);
+            } else if (topic === "fine_tune_llm") {
+                console.log("Fine Tuning !!!")
             }
         }
     })
 }
 
-initKafka().catch(console.error)
-
-export { sendMessage }
+export {
+    sendMessage,
+    initKafka
+}

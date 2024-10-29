@@ -33,22 +33,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata: 
-  name: ollama
-  labels:
-    app: ollama
-spec:
-  selector:
-    app: ollama
-  ports:
-    - name: ollama-port
-      protocol: TCP
-      port: 11434
-      targetPort: 11434
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata: 
   name: veritas-ai
   labels:
     app: veritas-ai

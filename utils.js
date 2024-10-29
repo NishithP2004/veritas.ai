@@ -45,7 +45,7 @@ async function generatePerturb(parameters, task_id) {
         const perturb = await generate_response(parameters)
         const doc = {
             text: perturb,
-            metadata: {
+            parameters: {
                 model,
                 temperature
             },
@@ -56,7 +56,7 @@ async function generatePerturb(parameters, task_id) {
 
         const requiredCount = models.length * 10;
         const availableCount = await db.collection("perturbations").countDocuments({
-            task_id: ""
+            task_id
         })
 
         if(requiredCount === availableCount) {
@@ -75,17 +75,18 @@ async function generatePerturb(parameters, task_id) {
 async function generatePerturbations(prompt, task_id) {
     const messages = []
     for(let model of models) {
-        const parameters = {
-            prompt,
-            temperature: i / 10,
-            model
-        }
         for(let i=1; i <= 10; i++) {
-            messages.push(sendMessage({
-                topic: "generate_perturbations",
+            const parameters = {
+                prompt,
+                temperature: i / 10,
+                model
+            }
+            console.log(parameters)
+            messages.push(await sendMessage({
+                topic: "generate_perturbation",
                 data: {
                     task_id,
-                    ...parameters
+                    parameters
                 }
             }))
         }
@@ -95,12 +96,14 @@ async function generatePerturbations(prompt, task_id) {
 }
 
 async function updateTask(hash, status="Started") {
-    await db.collection("task").updateOne({
+    return db.collection("tasks").updateOne({
         task_id: hash
     }, {
-        task_id: hash,
-        status,
-        last_modified: new Date().getTime()
+        $set: {
+            task_id: hash,
+            status,
+            last_modified: new Date().getTime()
+        }
     }, {
         upsert: true
     })
