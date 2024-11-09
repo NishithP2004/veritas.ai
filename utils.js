@@ -1,10 +1,11 @@
-import { sendMessage } from "./kafka.js"
-import { generate_response } from "./ollama.js"
-import { connectToDatabase } from "./mongo.js";
+import { sendMessage } from "./services/kafka.js"
+import { generate_response } from "./services/ollama.js"
+import { connectToDatabase } from "./services/mongo.js";
+import { client as redis } from "./services/redis.js";
 
 const db = await connectToDatabase()
 
-const models = ["gemma2:2b"] // TODO: Add more models
+const models = ["gemma2:2b"] //, "llama3.2:3b", "qwen2.5:3b", "phi3.5:3.8b", "nemotron-mini:4b"] // TODO: Add more models
 
 async function guessPrompt(text) {
     try {
@@ -37,6 +38,25 @@ async function guessPrompt(text) {
     }
 }
 
+async function checkTaskCompletion(task_id) {
+    const requiredCount = models.length * 10;
+    const availableCount = await db.collection("perturbations").countDocuments({
+        task_id,
+        is_AI: 1
+    })
+
+    const setSize = await redis.sCard(`tasks:${task_id}:links:pending`)
+
+    if ((requiredCount === availableCount) && setSize == 0) {
+        await sendMessage({
+            topic: "fine_tune_llm",
+            data: {
+                task_id
+            }
+        })
+    }
+}
+
 async function generatePerturb(parameters, task_id) {
     try {
         const { model, temperature } = parameters;
@@ -44,29 +64,18 @@ async function generatePerturb(parameters, task_id) {
         console.log(`Model: ${model}`)
         const perturb = await generate_response(parameters)
         const doc = {
+            task_id,
             text: perturb,
+            is_AI: 1,
             parameters: {
                 model,
                 temperature
-            },
-            task_id  
+            }
         }
 
         await db.collection("perturbations").insertOne(doc)
 
-        const requiredCount = models.length * 10;
-        const availableCount = await db.collection("perturbations").countDocuments({
-            task_id
-        })
-
-        if(requiredCount === availableCount) {
-            await sendMessage({
-                topic: "fine_tune_llm",
-                data: {
-                    task_id
-                }
-            })
-        }
+        await checkTaskCompletion(task_id)
     } catch(err) {
         console.error(`Error generating Perturb: ${err.message}`)
     }
@@ -95,18 +104,15 @@ async function generatePerturbations(prompt, task_id) {
     return Promise.all(messages)
 }
 
-async function updateTask(hash, status="Started") {
-    return db.collection("tasks").updateOne({
-        task_id: hash
-    }, {
-        $set: {
-            task_id: hash,
-            status,
-            last_modified: new Date().getTime()
-        }
-    }, {
-        upsert: true
+async function updateTask(hash, status="started") {
+    return redis.hSet(`task:${hash}`, {
+        status,
+        last_modified: new Date().getTime()
     })
 }
 
-export { guessPrompt, generatePerturbations, generatePerturb, updateTask }
+async function insertDocs(docs) {
+    return (docs.length > 0)? db.collection("perturbation").insertMany(docs): null;
+}
+
+export { guessPrompt, generatePerturbations, generatePerturb, updateTask, insertDocs, checkTaskCompletion }

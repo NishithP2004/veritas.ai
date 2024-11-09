@@ -1,7 +1,7 @@
 import express from "express"
 import { createServer } from "node:http";
 import { Server } from "socket.io" 
-import { sendMessage, initKafka } from "./kafka.js";
+import { sendMessage, initKafka } from "./services/kafka.js";
 
 initKafka().catch(console.error)
 
