@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata: 
+  name: veritas-ai
+  labels:
+    app: veritas-ai
+spec:
+  type: LoadBalancer
+  selector:
+    app: veritas-ai
+  ports:
+    - name: veritas-ai-port
+      protocol: TCP
+      port: 3000
+      targetPort: 3000

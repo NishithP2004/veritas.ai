@@ -1,6 +1,11 @@
-import ollama from 'ollama';
+import { Ollama } from 'ollama';
+import "dotenv/config"
 
-const LLM_MODEL = "gemma2:2b"
+const models = ["gemma2:2b", "llama3.2:3b", "qwen2.5:3b", "phi3.5:3.8b", "nemotron-mini:4b"] 
+
+const ollama = new Ollama({
+    host: process.env.OLLAMA_HOST || "http://localhost:11434"
+})
 
 async function loadModel(model) {
     return ollama.pull({
@@ -8,9 +13,16 @@ async function loadModel(model) {
     })
 }
 
-(async () => {
-    await loadModel(LLM_MODEL);
-})();
+async function loadModels(models) {
+    console.log("Loading Models. Please Wait...")
+    for(let model of models) {
+        await loadModel(model);
+        console.log(`Loaded: ${model}`)
+    }
+    console.log("Models Loaded.")
+}
+
+await loadModels(models)
 
 const generate_response = async (parameters) => {
     try {
@@ -56,4 +68,4 @@ const generate_embeddings = async (parameters) => {
     }
 }
 
-export { generate_response, generate_embeddings }
+export { generate_response, generate_embeddings, models }

@@ -17,7 +17,7 @@ const server = createServer(app)
 const io = new Server(server);
 
 io.on("connection", (client) => {
-    console.log(client.id)
+    console.log(`Connected to ${client.id}`)
 
     client.on("message", async (message, callback) => {
         const metadata = await sendMessage(message)

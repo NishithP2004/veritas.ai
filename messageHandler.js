@@ -4,7 +4,8 @@ import {
     generatePerturbations,
     updateTask,
     insertDocs,
-    checkTaskCompletion
+    checkTaskCompletion,
+    sleep
 } from "./utils.js"
 import {
     randomBytes
@@ -64,7 +65,7 @@ async function handleMessage(topic, data) {
             }
         })
     } else if (topic === "google_search") {
-        const links = await search(data.search_query, 1)
+        const links = (await search(data.search_query, 10)).filter(link => !link.endsWith(".pdf"))
         console.log(links)
         console.log(links.length, "links")
 
@@ -78,6 +79,7 @@ async function handleMessage(topic, data) {
                     link
                 }
             })
+            await sleep(2)
         })
     } else if (topic === "crawl_website") {
         const { link, task_id } = data

@@ -6,10 +6,11 @@ import "dotenv/config"
 import { handleMessage } from "../messageHandler.js";
 
 const HOST_IP = process.env.HOST_IP || ip.address()
+const mode = process.env.MODE || "DEV"
+
 const kafka = new Kafka({
     clientId: "veritas.ai",
-    // brokers: [`${HOST_IP}:9092`]
-    brokers: ["kafka:9092"]
+    brokers: [(mode === "PROD")? "kafka:9092": `${HOST_IP}:9092`]
 })
 
 const producer = kafka.producer()

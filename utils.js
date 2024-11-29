@@ -1,11 +1,17 @@
 import { sendMessage } from "./services/kafka.js"
-import { generate_response } from "./services/ollama.js"
+import { generate_response, models } from "./services/ollama.js"
 import { connectToDatabase } from "./services/mongo.js";
 import { client as redis } from "./services/redis.js";
 
 const db = await connectToDatabase()
 
-const models = ["gemma2:2b"] //, "llama3.2:3b", "qwen2.5:3b", "phi3.5:3.8b", "nemotron-mini:4b"] // TODO: Add more models
+async function sleep(delay) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve()
+        }, delay * 1000)
+    })
+}
 
 async function guessPrompt(text) {
     try {
@@ -84,10 +90,10 @@ async function generatePerturb(parameters, task_id) {
 async function generatePerturbations(prompt, task_id) {
     const messages = []
     for(let model of models) {
-        for(let i=1; i <= 10; i++) {
+        for(let i=0; i <= 100; i+=2) {
             const parameters = {
                 prompt,
-                temperature: i / 10,
+                temperature: i / 100,
                 model
             }
             console.log(parameters)
@@ -98,7 +104,9 @@ async function generatePerturbations(prompt, task_id) {
                     parameters
                 }
             }))
+            if(i % 4 === 0) await sleep(15)
         }
+        await sleep(0.5 * 60) 
     }
 
     return Promise.all(messages)
@@ -112,7 +120,7 @@ async function updateTask(hash, status="started") {
 }
 
 async function insertDocs(docs) {
-    return (docs.length > 0)? db.collection("perturbation").insertMany(docs): null;
+    return (docs.length > 0)? db.collection("perturbations").insertMany(docs): null;
 }
 
-export { guessPrompt, generatePerturbations, generatePerturb, updateTask, insertDocs, checkTaskCompletion }
+export { guessPrompt, generatePerturbations, generatePerturb, updateTask, insertDocs, checkTaskCompletion, sleep }
