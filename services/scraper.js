@@ -42,7 +42,7 @@ async function getPageContent(url) {
     try {
         const page = await browser.newPage();
         await page.goto(url, {
-            waitUntil: "networkidle0"
+            waitUntil: "domcontentloaded"
         });
         const content = await page.evaluate(() => document.body.innerHTML);
 

@@ -31,7 +31,6 @@ async function handleMessage(topic, data) {
         console.log("Guessing Prompt")
         const prompt = await guessPrompt(data.text)
         const hash = randomBytes(4).toString("hex")
-
         console.log("Creating Task")
         await updateTask(hash, topic)
 
@@ -71,7 +70,7 @@ async function handleMessage(topic, data) {
 
         await redis.sAdd(`tasks:${task_id}:links:pending`, links)
 
-        links.forEach(async link => {
+        for(let link of links) {
             await sendMessage({
                 topic: "crawl_website",
                 data: {
@@ -79,8 +78,8 @@ async function handleMessage(topic, data) {
                     link
                 }
             })
-            await sleep(2)
-        })
+            await sleep(15)
+        }
     } else if (topic === "crawl_website") {
         const { link, task_id } = data
         console.log(`Scraping: ${link}`)
@@ -102,6 +101,7 @@ async function handleMessage(topic, data) {
             const extracted = await Promise.all(extractSections(content).map(async section => {
                 if (section && section.trim().length > 10) {
                     const isEssayResult = await isEssay(section);
+                    await sleep(15)
                     if (isEssayResult && isEssayResult !== "null" && isEssayResult !== "false") {
                         const plainText = markdownToTxt(isEssayResult);
                         if (plainText.split(".").length > 2 && filterCookiesAndPaywall(plainText) < 0.70) {
@@ -123,7 +123,10 @@ async function handleMessage(topic, data) {
                 }
             }))
             
-            console.log(await insertDocs(docs))
+            const ack = await insertDocs(docs)
+            if(ack)
+                console.log(ack)
+            
             await redis.sRem(`tasks:${task_id}:links:pending`, link)
         }
 

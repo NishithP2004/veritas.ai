@@ -2,6 +2,9 @@ import { sendMessage } from "./services/kafka.js"
 import { generate_response, models } from "./services/ollama.js"
 import { connectToDatabase } from "./services/mongo.js";
 import { client as redis } from "./services/redis.js";
+import {
+    markdownToTxt
+} from "markdown-to-txt";
 
 const db = await connectToDatabase()
 
@@ -45,7 +48,7 @@ async function guessPrompt(text) {
 }
 
 async function checkTaskCompletion(task_id) {
-    const requiredCount = models.length * 10;
+    const requiredCount = models.length * 51;
     const availableCount = await db.collection("perturbations").countDocuments({
         task_id,
         is_AI: 1
@@ -71,7 +74,7 @@ async function generatePerturb(parameters, task_id) {
         const perturb = await generate_response(parameters)
         const doc = {
             task_id,
-            text: perturb,
+            text: markdownToTxt(perturb),
             is_AI: 1,
             parameters: {
                 model,
@@ -106,7 +109,7 @@ async function generatePerturbations(prompt, task_id) {
             }))
             if(i % 4 === 0) await sleep(15)
         }
-        await sleep(0.5 * 60) 
+        await sleep(1 * 60) 
     }
 
     return Promise.all(messages)
